@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>题目3 - 菱形ABCD中AG的最小值</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: center;
+    min-height: 100vh;
+    background: #0d1117;
+    color: #c9d1d9;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    overflow: hidden;
+  }
+  .top-bar {
+    position: fixed; top: 0; left: 0; right: 0;
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 20px; z-index: 10;
+  }
+  .top-bar a {
+    color: #58a6ff; text-decoration: none; font-size: 14px;
+    display: flex; align-items: center; gap: 4px;
+    padding: 4px 10px; border-radius: 6px;
+    background: #21262d; transition: background 0.2s;
+  }
+  .top-bar a:hover { background: #30363d; }
+  h1 { font-size: 20px; font-weight: 500; color: #e6edf3; margin-bottom: 8px; }
+  .problem {
+    font-size: 13px; color: #8b949e; margin-bottom: 12px;
+    max-width: 640px; text-align: center; line-height: 1.6;
+  }
+  svg { border-radius: 8px; display: block; }
+  .controls {
+    margin-top: 12px; display: flex; gap: 14px; align-items: center;
+    flex-wrap: wrap; justify-content: center;
+  }
+  button {
+    background: #238636; color: white; border: none;
+    padding: 7px 18px; border-radius: 6px; cursor: pointer;
+    font-size: 14px; font-weight: 600; transition: background 0.2s;
+  }
+  button:hover { background: #2ea043; }
+  button.sec { background: #30363d; }
+  button.sec:hover { background: #484f58; }
+  input[type="range"] { width: 240px; accent-color: #238636; }
+  .ag-display {
+    font-size: 18px; font-variant-numeric: tabular-nums;
+    min-width: 220px; text-align: center;
+  }
+  .ag-val { color: #3fb950; font-weight: 700; }
+  .ag-min { color: #8b949e; font-size: 14px; }
+  .ag-min-val { color: #f85149; font-weight: 600; }
+  .legend {
+    margin-top: 10px; display: flex; gap: 14px; flex-wrap: wrap;
+    justify-content: center; font-size: 12px;
+  }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .legend-bar { width: 14px; height: 3px; border-radius: 1px; }
+  .highlight {
+    color: #f0883e; transition: color 0.3s;
+  }
+</style>
+</head>
+<body>
+<div class="top-bar">
+  <a href="../index.html">← 返回题目列表</a>
+</div>
+<h1>题目3 · 菱形ABCD中AG的最小值</h1>
+<p class="problem">
+  菱形ABCD的边长为4，∠ABC=60°。点E、F分别是AB、CD上的动点，且AE=CF。
+  过点B作BG⊥EF于点G，连接AG。求AG长的最小值。
+</p>
+<svg id="geo" width="680" height="500" viewBox="-3.5 -0.8 9.5 7.3"
+     shape-rendering="geometricPrecision"></svg>
+<div class="controls">
+  <button id="playBtn">播放</button>
+  <button id="resetBtn" class="sec">重置</button>
+  <input type="range" id="slider" min="0" max="4" value="0" step="0.01">
+  <span class="ag-display">
+    AE = <span class="highlight" id="aeVal">0.00</span>
+    &nbsp;·&nbsp;
+    <span class="ag-val" id="agVal">AG = 2.00</span>
+    <span class="ag-min">&nbsp;·&nbsp;最小值 <span class="ag-min-val">√7−√3 ≈ 0.914</span></span>
+  </span>
+</div>
+<div class="legend">
+  <span class="legend-item"><span class="legend-bar" style="background:#58a6ff"></span>菱形ABCD</span>
+  <span class="legend-item"><span class="legend-bar" style="background:#f0883e"></span>EF</span>
+  <span class="legend-item"><span class="legend-bar" style="background:#8b949e"></span>BG⊥EF</span>
+  <span class="legend-item"><span class="legend-bar" style="background:#3fb950"></span>AG / G轨迹圆</span>
+  <span class="legend-item"><span class="legend-bar" style="background:#f85149"></span>最小值位置</span>
+</div>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const svg = $('geo'), slider = $('slider');
+  const playBtn = $('playBtn'), resetBtn = $('resetBtn');
+  const agVal = $('agVal'), aeVal = $('aeVal');
+
+  const sqrt3 = Math.sqrt(3);
+
+  // ---- Math coordinates (y-up) ----
+  const A = {x:0, y:0};
+  const B = {x:4, y:0};
+  const C = {x:2, y:2*sqrt3};
+  const D = {x:-2, y:2*sqrt3};
+  const M = {x:1, y:sqrt3};  // rhombus center, midpoint of EF
+
+  // G-locus circle: diameter BM, center O_c, radius = √3
+  const Oc = {x:2.5, y:sqrt3/2};
+  const rG = sqrt3;
+  const AGmin = Math.sqrt(7) - sqrt3;  // √7 - √3
+
+  // SVG y-flip transform
+  const svgY0 = 5.5;
+  const toSVG = (p) => ({x: p.x, y: svgY0 - p.y});
+
+  // Precompute SVG coordinates for static points
+  const sA = toSVG(A), sB = toSVG(B), sC = toSVG(C), sD = toSVG(D);
+
+  const el = (tag, attrs) => {
+    const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+    return e;
+  };
+
+  // ---- Static scene ----
+
+  // Rhombus ABCD
+  svg.appendChild(el('polygon', {
+    points: `${sA.x},${sA.y} ${sB.x},${sB.y} ${sC.x},${sC.y} ${sD.x},${sD.y}`,
+    fill: '#58a6ff', 'fill-opacity': 0.06,
+    stroke: '#58a6ff', 'stroke-width': 0.04
+  }));
+
+  // Diagonal AC and BD (subtle)
+  svg.appendChild(el('line', {
+    x1: sA.x, y1: sA.y, x2: sC.x, y2: sC.y,
+    stroke: '#484f58', 'stroke-width': 0.02, 'stroke-dasharray': '0.1 0.08', opacity: 0.3
+  }));
+  svg.appendChild(el('line', {
+    x1: sB.x, y1: sB.y, x2: sD.x, y2: sD.y,
+    stroke: '#484f58', 'stroke-width': 0.02, 'stroke-dasharray': '0.1 0.08', opacity: 0.3
+  }));
+
+  // Rhombus center M
+  const sM = toSVG(M);
+  svg.appendChild(el('circle', {
+    cx: sM.x, cy: sM.y, r: 0.05,
+    fill: '#8b949e', stroke: 'none'
+  }));
+
+  // G-locus circle (diameter BM) — all possible positions of G
+  const sOc = toSVG(Oc);
+  svg.appendChild(el('circle', {
+    cx: sOc.x, cy: sOc.y, r: rG,
+    fill: 'none', stroke: '#3fb950', 'stroke-width': 0.02,
+    'stroke-dasharray': '0.06 0.05', opacity: 0.3
+  }));
+
+  // Line BM (reference)
+  svg.appendChild(el('line', {
+    x1: sB.x, y1: sB.y, x2: sM.x, y2: sM.y,
+    stroke: '#3fb950', 'stroke-width': 0.015,
+    'stroke-dasharray': '0.04 0.04', opacity: 0.2
+  }));
+
+  // Minimum AG position marker on the circle
+  // G_min lies on the line from Oc to A, at distance rG from Oc
+  const dirRatio = rG / Math.sqrt(7);  // rG / |Oc - A|
+  const Gmin_math = {
+    x: Oc.x - dirRatio * Oc.x,
+    y: Oc.y - dirRatio * Oc.y
+  };
+  const sGmin = toSVG(Gmin_math);
+  // Dashed line from A through circle center to minimum point
+  svg.appendChild(el('line', {
+    x1: sA.x, y1: sA.y, x2: sGmin.x, y2: sGmin.y,
+    stroke: '#f85149', 'stroke-width': 0.02,
+    'stroke-dasharray': '0.05 0.04', opacity: 0.35
+  }));
+  // Min marker diamond
+  const mkDiamond = (cx, cy, sz, color) => {
+    const pts = [
+      {x: cx, y: cy - sz}, {x: cx + sz, y: cy},
+      {x: cx, y: cy + sz}, {x: cx - sz, y: cy}
+    ].map(p => `${p.x},${p.y}`).join(' ');
+    const d = el('polygon', {points: pts, fill: color, stroke: '#0d1117', 'stroke-width': 0.02});
+    svg.appendChild(d);
+    return d;
+  };
+  mkDiamond(sGmin.x, sGmin.y, 0.1, '#f85149');
+  // AG_min label
+  const lblAGmin = el('text', {
+    x: sGmin.x + 0.35, y: sGmin.y - 0.1,
+    fill: '#f85149', 'font-size': 0.16, 'font-family': 'sans-serif',
+    'text-anchor': 'start', opacity: 0.7
+  });
+  lblAGmin.textContent = 'AG_min ≈ 0.914';
+  svg.appendChild(lblAGmin);
+
+  // ---- Dynamic group ----
+  const g = el('g', {}); svg.appendChild(g);
+
+  // Line EF
+  const lineEF = el('line', {
+    stroke: '#f0883e', 'stroke-width': 0.04
+  });
+  g.appendChild(lineEF);
+
+  // Perpendicular BG
+  const lineBG = el('line', {
+    stroke: '#8b949e', 'stroke-width': 0.025, 'stroke-dasharray': '0.12 0.08'
+  });
+  g.appendChild(lineBG);
+
+  // Line AG
+  const lineAG = el('line', {
+    stroke: '#3fb950', 'stroke-width': 0.04
+  });
+  g.appendChild(lineAG);
+
+  // Right-angle marker at G (BG ⟂ EF)
+  const raG = el('path', {
+    fill: 'none', stroke: '#8b949e', 'stroke-width': 0.025, opacity: 0.5
+  });
+  g.appendChild(raG);
+
+  // Point E
+  const ptE = el('circle', {r: 0.05, fill: '#f0883e', stroke: '#0d1117', 'stroke-width': 0.02});
+  g.appendChild(ptE);
+
+  // Point F
+  const ptF = el('circle', {r: 0.05, fill: '#f0883e', stroke: '#0d1117', 'stroke-width': 0.02});
+  g.appendChild(ptF);
+
+  // Point G
+  const ptG = el('circle', {r: 0.065, fill: '#3fb950', stroke: '#0d1117', 'stroke-width': 0.02});
+  g.appendChild(ptG);
+
+  // ---- Labels ----
+  const mkLbl = (text, color = '#c9d1d9', sz = 0.2) => {
+    const t = el('text', {
+      fill: color, 'font-size': sz, 'font-weight': 600,
+      'font-family': 'sans-serif', 'text-anchor': 'middle',
+      'dominant-baseline': 'central',
+      stroke: '#0d1117', 'stroke-width': 0.04, 'paint-order': 'stroke'
+    });
+    t.textContent = text;
+    g.appendChild(t);
+    return t;
+  };
+
+  // Static labels
+  const lblA = mkLbl('A'); lblA.setAttribute('x', sA.x - 0.4); lblA.setAttribute('y', sA.y);
+  const lblB = mkLbl('B'); lblB.setAttribute('x', sB.x + 0.4); lblB.setAttribute('y', sB.y);
+  const lblC = mkLbl('C'); lblC.setAttribute('x', sC.x + 0.4); lblC.setAttribute('y', sC.y);
+  const lblD = mkLbl('D'); lblD.setAttribute('x', sD.x - 0.4); lblD.setAttribute('y', sD.y);
+
+  // Center label
+  const lblM = mkLbl('M', '#8b949e', 0.16);
+  lblM.setAttribute('x', sM.x); lblM.setAttribute('y', sM.y + 0.35);
+
+  // Dynamic labels
+  const lblE = mkLbl('E', '#f0883e', 0.17);
+  const lblF = mkLbl('F', '#f0883e', 0.17);
+  const lblG = mkLbl('G', '#3fb950', 0.19);
+  const lblAG = mkLbl('', '#3fb950', 0.16);
+
+  // ---- Small info: AE length indicator on AB ----
+  const abBar = el('rect', {
+    x: 0, y: svgY0 - 0.06, height: 0.12,
+    fill: '#f0883e', opacity: 0.5
+  });
+  g.appendChild(abBar);
+
+  // External control API (for video rendering)
+  window.setProgress = (val) => { ae = parseFloat(val); update(); };
+
+  // ---- Animation ----
+  let ae = 0, playing = false, speed = 0.008;
+
+  function update() {
+    // Points in math coords
+    const E = {x: ae, y: 0};
+    const F = {x: 2 - ae, y: 2*sqrt3};
+    // EF direction
+    const d = {x: F.x - E.x, y: F.y - E.y};
+    const dLen2 = d.x*d.x + d.y*d.y;
+
+    let G;
+    if (dLen2 < 1e-10) {
+      // Degenerate: EF is a point — shouldn't happen normally
+      G = {x: B.x, y: B.y};
+    } else {
+      // Foot of perpendicular from B to line EF
+      const eMinusB = {x: E.x - B.x, y: E.y - B.y};
+      const t = -(eMinusB.x*d.x + eMinusB.y*d.y) / dLen2;
+      G = {x: E.x + t*d.x, y: E.y + t*d.y};
+    }
+
+    const sE = toSVG(E);
+    const sF = toSVG(F);
+    const sG = toSVG(G);
+    const ag = Math.sqrt((G.x - A.x)*(G.x - A.x) + (G.y - A.y)*(G.y - A.y));
+
+    // Lines
+    lineEF.setAttribute('x1', sE.x); lineEF.setAttribute('y1', sE.y);
+    lineEF.setAttribute('x2', sF.x); lineEF.setAttribute('y2', sF.y);
+
+    lineBG.setAttribute('x1', sB.x); lineBG.setAttribute('y1', sB.y);
+    lineBG.setAttribute('x2', sG.x); lineBG.setAttribute('y2', sG.y);
+
+    lineAG.setAttribute('x1', sA.x); lineAG.setAttribute('y1', sA.y);
+    lineAG.setAttribute('x2', sG.x); lineAG.setAttribute('y2', sG.y);
+
+    // Right-angle marker at G
+    // Unit vectors along BG (from G toward B) and along EF (from G toward E or F)
+    const dG = {x: B.x - G.x, y: B.y - G.y};
+    const dE = {x: E.x - G.x, y: E.y - G.y};
+    const gLen = Math.sqrt(dG.x*dG.x + dG.y*dG.y);
+    const eLen = Math.sqrt(dE.x*dE.x + dE.y*dE.y);
+    if (gLen > 0.01 && eLen > 0.01) {
+      const r = 0.12;
+      const uG = {x: dG.x/gLen, y: dG.y/gLen};
+      const uE = {x: dE.x/eLen, y: dE.y/eLen};
+      const p1 = toSVG({x: G.x + r*uG.x, y: G.y + r*uG.y});
+      const p2 = toSVG({x: G.x + r*(uG.x+uE.x), y: G.y + r*(uG.y+uE.y)});
+      const p3 = toSVG({x: G.x + r*uE.x, y: G.y + r*uE.y});
+      raG.setAttribute('d', `M${p1.x},${p1.y} L${p2.x},${p2.y} L${p3.x},${p3.y}`);
+    } else {
+      raG.setAttribute('d', '');
+    }
+
+    // Points
+    ptE.setAttribute('cx', sE.x); ptE.setAttribute('cy', sE.y);
+    ptF.setAttribute('cx', sF.x); ptF.setAttribute('cy', sF.y);
+    ptG.setAttribute('cx', sG.x); ptG.setAttribute('cy', sG.y);
+
+    // Labels offset
+    const offDir = (p, c, dist) => {
+      const dx = p.x - c.x, dy = p.y - c.y;
+      const len = Math.sqrt(dx*dx + dy*dy);
+      if (len < 0.001) return {x: p.x + dist, y: p.y};
+      return {x: p.x + dist*dx/len, y: p.y + dist*dy/len};
+    };
+    // E label: along EF direction, offset from E
+    const eDir = {x: sF.x - sE.x, y: sF.y - sE.y};
+    const eLen2 = Math.sqrt(eDir.x*eDir.x + eDir.y*eDir.y);
+    if (eLen2 > 0.01) {
+      const eu = {x: eDir.x/eLen2, y: eDir.y/eLen2};
+      lblE.setAttribute('x', sE.x - eu.y*0.35);
+      lblE.setAttribute('y', sE.y + eu.x*0.35);
+    } else {
+      lblE.setAttribute('x', sE.x - 0.35);
+      lblE.setAttribute('y', sE.y);
+    }
+    // F label
+    if (eLen2 > 0.01) {
+      const eu = {x: eDir.x/eLen2, y: eDir.y/eLen2};
+      lblF.setAttribute('x', sF.x + eu.y*0.35);
+      lblF.setAttribute('y', sF.y - eu.x*0.35);
+    } else {
+      lblF.setAttribute('x', sF.x + 0.35);
+      lblF.setAttribute('y', sF.y);
+    }
+    // G label
+    const gLab = offDir(sG, sM, 0.35);
+    lblG.setAttribute('x', gLab.x); lblG.setAttribute('y', gLab.y);
+
+    // AG length label near AG segment
+    const agMid = {x: (sA.x + sG.x)/2, y: (sA.y + sG.y)/2};
+    const agDx = sG.x - sA.x, agDy = sG.y - sA.y;
+    const agLen = Math.sqrt(agDx*agDx + agDy*agDy);
+    if (agLen > 0.01) {
+      const perpX = -agDy/agLen*0.3, perpY = agDx/agLen*0.3;
+      lblAG.setAttribute('x', agMid.x + perpX);
+      lblAG.setAttribute('y', agMid.y + perpY);
+    }
+    lblAG.textContent = `AG = ${ag.toFixed(3)}`;
+
+    // AE indicator bar on AB
+    abBar.setAttribute('width', ae);
+    abBar.setAttribute('x', sA.x);
+    abBar.setAttribute('y', svgY0 - 0.06);
+
+    // Controls display
+    aeVal.textContent = ae.toFixed(2);
+    const isMin = Math.abs(ag - AGmin) < 0.005;
+    agVal.innerHTML = `AG = ${ag.toFixed(3)}` +
+      (isMin ? ' ⭐ <span style="color:#f85149">最小值!</span>' : '');
+    agVal.style.color = isMin ? '#f85149' : '#3fb950';
+
+    slider.value = ae;
+  }
+
+  function animate() {
+    if (playing) {
+      ae = parseFloat(ae) + speed;
+      if (ae > 4) { ae = 0; }
+      update();
+    }
+    requestAnimationFrame(animate);
+  }
+
+  playBtn.addEventListener('click', () => {
+    playing = !playing;
+    playBtn.textContent = playing ? '暂停' : '播放';
+    playBtn.style.background = playing ? '#da3633' : '#238636';
+  });
+  resetBtn.addEventListener('click', () => { ae = 0; update(); });
+  slider.addEventListener('input', () => {
+    ae = parseFloat(slider.value);
+    playing = false;
+    playBtn.textContent = '播放';
+    playBtn.style.background = '#238636';
+    update();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.code === 'Space') { e.preventDefault(); playBtn.click(); }
+    if (e.code === 'ArrowRight') { ae = Math.min(4, ae + 0.04); update(); }
+    if (e.code === 'ArrowLeft') { ae = Math.max(0, ae - 0.04); update(); }
+  });
+
+  // ---- Init ----
+  update();
+  animate();
+})();
+</script>
+</body>
+</html>

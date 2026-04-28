@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>题目2 - 矩形CDGH中线段OB最小值</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: center;
+    min-height: 100vh;
+    background: #0d1117;
+    color: #c9d1d9;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    overflow: hidden;
+  }
+  .top-bar {
+    position: fixed; top: 0; left: 0; right: 0;
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 20px; z-index: 10;
+  }
+  .top-bar a {
+    color: #58a6ff; text-decoration: none; font-size: 14px;
+    display: flex; align-items: center; gap: 4px;
+    padding: 4px 10px; border-radius: 6px;
+    background: #21262d; transition: background 0.2s;
+  }
+  .top-bar a:hover { background: #30363d; }
+  h1 { font-size: 20px; font-weight: 500; color: #e6edf3; margin-bottom: 8px; }
+  .problem {
+    font-size: 13px; color: #8b949e; margin-bottom: 12px;
+    max-width: 640px; text-align: center; line-height: 1.6;
+  }
+  svg { border-radius: 8px; display: block; }
+  .controls {
+    margin-top: 12px; display: flex; gap: 14px; align-items: center;
+    flex-wrap: wrap; justify-content: center;
+  }
+  button {
+    background: #238636; color: white; border: none;
+    padding: 7px 18px; border-radius: 6px; cursor: pointer;
+    font-size: 14px; font-weight: 600; transition: background 0.2s;
+  }
+  button:hover { background: #2ea043; }
+  button.sec { background: #30363d; }
+  button.sec:hover { background: #484f58; }
+  input[type="range"] { width: 240px; accent-color: #238636; }
+  .ob-display {
+    font-size: 18px; font-variant-numeric: tabular-nums;
+    min-width: 180px; text-align: center;
+  }
+  .ob-val { color: #f0883e; font-weight: 700; }
+  .ob-min { color: #8b949e; font-size: 14px; }
+  .ob-min-val { color: #3fb950; font-weight: 600; }
+  .legend {
+    margin-top: 10px; display: flex; gap: 14px; flex-wrap: wrap;
+    justify-content: center; font-size: 12px;
+  }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .legend-bar { width: 14px; height: 3px; border-radius: 1px; }
+</style>
+</head>
+<body>
+<div class="top-bar">
+  <a href="../index.html">← 返回题目列表</a>
+</div>
+<h1>题目2 · 矩形CDGH中线段OB最小值</h1>
+<p class="problem">
+  线段AB的长为8，点D在AB上，△ACD是边长为3的等边三角形。
+  过点D作与CD垂直的射线DP，过DP上的动点G（不与D重合）作矩形CDGH，
+  记矩形CDGH的对角线交点为O，连接OB。求线段OB的最小值。
+</p>
+<svg id="geo" width="680" height="480" viewBox="-2 -2 17 12"
+     shape-rendering="geometricPrecision"></svg>
+<div class="controls">
+  <button id="playBtn">播放</button>
+  <button id="resetBtn" class="sec">重置</button>
+  <input type="range" id="slider" min="0" max="10.392" value="0" step="0.05">
+  <span class="ob-display">
+    <span class="ob-val" id="obVal">OB = 5.89</span>
+    <span class="ob-min">&nbsp;·&nbsp;最小值 <span class="ob-min-val">4.00</span></span>
+  </span>
+</div>
+<div class="legend">
+  <span class="legend-item"><span class="legend-bar" style="background:#58a6ff"></span>△ACD</span>
+  <span class="legend-item"><span class="legend-bar" style="background:#f0883e"></span>矩形CDGH</span>
+  <span class="legend-item"><span class="legend-bar" style="background:#3fb950"></span>OB</span>
+  <span class="legend-item"><span class="legend-bar" style="background:#f85149"></span>最小值位置</span>
+</div>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const svg = $('geo'), slider = $('slider'), obVal = $('obVal');
+  const playBtn = $('playBtn'), resetBtn = $('resetBtn');
+
+  const sqrt3 = Math.sqrt(3);
+
+  // ---- Math coordinates (y-up) ----
+  const A = {x:0, y:0};
+  const B = {x:8, y:0};
+  const D = {x:3, y:0};
+  const C = {x:1.5, y:3*sqrt3/2};  // equilateral triangle ACD, side=3
+
+  // Ray DP direction: perpendicular to CD
+  // CD = (1.5, -3√3/2), a ⟂ vector is (3√3/2, 1.5) → unit (√3/2, 0.5)
+  // DP: D + t*(√3/2, 0.5) for t >= 0
+  const dirDP = {x: sqrt3/2, y: 0.5};
+
+  // SVG transform (y-flip): math (x,y-up) → SVG (x,y-down)
+  const svgOriginY = 7.5;
+  const toSVG = (p) => ({x: p.x, y: svgOriginY - p.y});
+
+  // Parameter range
+  const tMax = 6 * sqrt3;  // ≈ 10.392
+  const tOpt = 5 * sqrt3;  // ≈ 8.660 — OB minimum
+
+  // Helper functions
+  const G_math = (t) => ({x: D.x + t * dirDP.x, y: D.y + t * dirDP.y});
+  const H_math = (t) => ({x: C.x + t * dirDP.x, y: C.y + t * dirDP.y});  // H = C + G - D
+  const O_math = (t) => ({x: (C.x + G_math(t).x) / 2, y: (C.y + G_math(t).y) / 2});
+
+  const obLen = (t) => {
+    const o = O_math(t);
+    return Math.sqrt((B.x - o.x)**2 + (B.y - o.y)**2);
+  };
+
+  const el = (tag, attrs) => {
+    const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+    return e;
+  };
+
+  // ---- Apply SVG transform to points ----
+  const sA = toSVG(A), sB = toSVG(B), sD = toSVG(D), sC = toSVG(C);
+
+  // ---- Build static scene ----
+
+  // AB segment (thick line)
+  svg.appendChild(el('line', {
+    x1: sA.x, y1: sA.y, x2: sB.x, y2: sB.y,
+    stroke: '#58a6ff', 'stroke-width': 0.06
+  }));
+
+  // AB endpoints (small dash marks)
+  const mkTick = (x, y) => el('line', {
+    x1: x, y1: y-0.25, x2: x, y2: y+0.25,
+    stroke: '#8b949e', 'stroke-width': 0.03
+  });
+  svg.appendChild(mkTick(sA.x, sA.y));
+  svg.appendChild(mkTick(sB.x, sB.y));
+
+  // "8" marker at midpoint of AB
+  const midAB = toSVG({x: 4, y: 0});
+  svg.appendChild(el('text', {
+    x: midAB.x, y: midAB.y + 0.55, fill: '#8b949e',
+    'font-size': 0.22, 'font-family': 'sans-serif',
+    'text-anchor': 'middle', 'font-style': 'italic'
+  })).textContent = 'AB = 8';
+
+  // Triangle ACD (equilateral)
+  svg.appendChild(el('polygon', {
+    points: `${sA.x},${sA.y} ${sC.x},${sC.y} ${sD.x},${sD.y}`,
+    fill: '#58a6ff', 'fill-opacity': 0.1,
+    stroke: '#58a6ff', 'stroke-width': 0.035
+  }));
+
+  // Ray DP (dashed extension)
+  const rayEnd = toSVG({x: D.x + (tMax + 1.5) * dirDP.x, y: D.y + (tMax + 1.5) * dirDP.y});
+  svg.appendChild(el('line', {
+    x1: sD.x, y1: sD.y, x2: rayEnd.x, y2: rayEnd.y,
+    stroke: '#484f58', 'stroke-width': 0.025, 'stroke-dasharray': '0.15 0.1'
+  }));
+
+  // Right-angle marker at D (between CD and DP)
+  const raSize = 0.2;
+  // Unit vectors: from D to C and from D along DP (in math coords, then converted)
+  const uDC = {x: (C.x - D.x) / 3, y: (C.y - D.y) / 3};  // |CD| = 3
+  // uDC goes from D to C
+  const raPts = [
+    {x: D.x + raSize * uDC.x, y: D.y + raSize * uDC.y},
+    {x: D.x + raSize * (uDC.x + dirDP.x), y: D.y + raSize * (uDC.y + dirDP.y)},
+    {x: D.x + raSize * dirDP.x, y: D.y + raSize * dirDP.y},
+  ].map(p => toSVG(p));
+  svg.appendChild(el('path', {
+    d: `M${raPts[0].x},${raPts[0].y} L${raPts[1].x},${raPts[1].y} L${raPts[2].x},${raPts[2].y}`,
+    fill: 'none', stroke: '#8b949e', 'stroke-width': 0.03
+  }));
+
+  // Circle: OB = 4 (minimum boundary, centered at B)
+  const cMin = el('circle', {
+    cx: sB.x, cy: sB.y, r: 4,
+    fill: 'none', stroke: '#f85149', 'stroke-width': 0.02,
+    'stroke-dasharray': '0.06 0.06', opacity: 0.3
+  });
+  svg.appendChild(cMin);
+
+  // Optimal G position marker on DP (t = tOpt)
+  const gOpt = toSVG(G_math(tOpt));
+  svg.appendChild(el('circle', {
+    cx: gOpt.x, cy: gOpt.y, r: 0.08,
+    fill: 'none', stroke: '#f85149', 'stroke-width': 0.025, opacity: 0.5
+  }));
+  svg.appendChild(el('text', {
+    x: gOpt.x, y: gOpt.y - 0.35, fill: '#f85149',
+    'font-size': 0.16, 'font-family': 'sans-serif',
+    'text-anchor': 'middle', opacity: 0.6,
+  })).textContent = 'OB最小值';
+
+  // ---- Dynamic group ----
+  const g = el('g', {}); svg.appendChild(g);
+
+  // Rectangle CDGH
+  const rect = el('polygon', {
+    fill: '#f0883e', 'fill-opacity': 0.12,
+    stroke: '#f0883e', 'stroke-width': 0.03
+  });
+  g.appendChild(rect);
+
+  // Diagonals CG and DH (thin, subtle)
+  const diag1 = el('line', {
+    stroke: '#f0883e', 'stroke-width': 0.015,
+    'stroke-dasharray': '0.06 0.04', opacity: 0.35
+  });
+  g.appendChild(diag1);
+  const diag2 = el('line', {
+    stroke: '#f0883e', 'stroke-width': 0.015,
+    'stroke-dasharray': '0.06 0.04', opacity: 0.35
+  });
+  g.appendChild(diag2);
+
+  // Segment OB
+  const lineOB = el('line', {
+    stroke: '#3fb950', 'stroke-width': 0.045
+  });
+  g.appendChild(lineOB);
+
+  // Point O (center)
+  const ptO = el('circle', {
+    r: 0.07, fill: '#3fb950', stroke: '#0d1117', 'stroke-width': 0.02
+  });
+  g.appendChild(ptO);
+
+  // Point G
+  const ptG = el('circle', {
+    r: 0.06, fill: '#f0883e', stroke: '#0d1117', 'stroke-width': 0.02
+  });
+  g.appendChild(ptG);
+
+  // Point H
+  const ptH = el('circle', {
+    r: 0.06, fill: '#f0883e', stroke: '#0d1117', 'stroke-width': 0.02
+  });
+  g.appendChild(ptH);
+
+  // Point C (re-draw on top for visibility)
+  const ptC = el('circle', {
+    r: 0.05, fill: '#58a6ff', stroke: '#0d1117', 'stroke-width': 0.02
+  });
+  ptC.setAttribute('cx', sC.x);
+  ptC.setAttribute('cy', sC.y);
+  g.appendChild(ptC);
+
+  // Point D (re-draw on top)
+  const ptD = el('circle', {
+    r: 0.05, fill: '#58a6ff', stroke: '#0d1117', 'stroke-width': 0.02
+  });
+  ptD.setAttribute('cx', sD.x);
+  ptD.setAttribute('cy', sD.y);
+  g.appendChild(ptD);
+
+  // ---- Labels ----
+  const mkLbl = (text, color = '#c9d1d9', sz = 0.2) => {
+    const t = el('text', {
+      fill: color, 'font-size': sz, 'font-weight': 600,
+      'font-family': 'sans-serif', 'text-anchor': 'middle',
+      'dominant-baseline': 'central',
+      stroke: '#0d1117', 'stroke-width': 0.04, 'paint-order': 'stroke'
+    });
+    t.textContent = text;
+    g.appendChild(t);
+    return t;
+  };
+
+  // Static labels (A, B, C, D) — set both x and y on a single label
+  const off = 0.3;
+  const lblA = mkLbl('A', '#8b949e', 0.22);
+  lblA.setAttribute('x', sA.x - off); lblA.setAttribute('y', sA.y);
+  const lblB = mkLbl('B', '#8b949e', 0.22);
+  lblB.setAttribute('x', sB.x + off); lblB.setAttribute('y', sB.y);
+  const lblC = mkLbl('C', '#58a6ff', 0.2);
+  lblC.setAttribute('x', sC.x); lblC.setAttribute('y', sC.y - 0.4);
+  const lblD = mkLbl('D', '#8b949e', 0.2);
+  lblD.setAttribute('x', sD.x + 0.35); lblD.setAttribute('y', sD.y + 0.35);
+
+  // Dynamic labels (G, H, O)
+  const lblG = mkLbl('G', '#f0883e', 0.18);
+  const lblH = mkLbl('H', '#f0883e', 0.18);
+  const lblO = mkLbl('O', '#3fb950', 0.2);
+
+  // OB length label (on SVG)
+  const lblOB = mkLbl('', '#3fb950', 0.18);
+
+  // ---- OB mini-bar (in SVG) ----
+  const barGroup = el('g', {}); svg.appendChild(barGroup);
+  // Background bar
+  barGroup.appendChild(el('rect', {
+    x: 10, y: -1.4, width: 4.5, height: 0.6, rx: 0.15,
+    fill: '#161b22', stroke: '#30363d', 'stroke-width': 0.025
+  }));
+  // Bar label
+  const barLabel = el('text', {
+    x: 10.1, y: -1.1, fill: '#8b949e', 'font-size': 0.16,
+    'font-family': 'sans-serif'
+  });
+  barLabel.textContent = 'OB';
+  barGroup.appendChild(barLabel);
+  // Value bar (filled portion)
+  const barFill = el('rect', {
+    x: 10.45, y: -1.33, height: 0.46, rx: 0.1,
+    fill: '#f0883e', opacity: 0.7
+  });
+  barGroup.appendChild(barFill);
+  // Min marker line on bar
+  const barMin = el('line', {
+    x1: 0, y1: -1.4, x2: 0, y2: -0.8,
+    stroke: '#f85149', 'stroke-width': 0.025, 'stroke-dasharray': '0.04 0.03'
+  });
+  barGroup.appendChild(barMin);
+
+  // ---- Animation loop ----
+  let t = 0, playing = false, speed = 0.04;
+
+  // External control API (for video rendering)
+  window.setProgress = (val) => { t = parseFloat(val); update(); };
+
+  // Pre-compute OB range for the bar
+  const obMin = 4;  // theoretical minimum
+  const obMax = obLen(0);  // OB at t=0 ≈ 5.89
+  const barRange = obMax - obMin;
+
+  function update() {
+    const gM = G_math(t);
+    const hM = H_math(t);
+    const oM = O_math(t);
+    const sG = toSVG(gM);
+    const sH = toSVG(hM);
+    const sO = toSVG(oM);
+    const ob = obLen(t);
+
+    // Rectangle CDGH
+    rect.setAttribute('points',
+      `${sC.x},${sC.y} ${sD.x},${sD.y} ${sG.x},${sG.y} ${sH.x},${sH.y}`);
+
+    // Diagonals CG and DH
+    diag1.setAttribute('x1', sC.x); diag1.setAttribute('y1', sC.y);
+    diag1.setAttribute('x2', sG.x); diag1.setAttribute('y2', sG.y);
+    diag2.setAttribute('x1', sD.x); diag2.setAttribute('y1', sD.y);
+    diag2.setAttribute('x2', sH.x); diag2.setAttribute('y2', sH.y);
+
+    // OB line
+    lineOB.setAttribute('x1', sB.x); lineOB.setAttribute('y1', sB.y);
+    lineOB.setAttribute('x2', sO.x); lineOB.setAttribute('y2', sO.y);
+
+    // Points
+    ptG.setAttribute('cx', sG.x); ptG.setAttribute('cy', sG.y);
+    ptH.setAttribute('cx', sH.x); ptH.setAttribute('cy', sH.y);
+    ptO.setAttribute('cx', sO.x); ptO.setAttribute('cy', sO.y);
+
+    // Dynamic labels — offset away from rectangle center
+    const rectCenter = toSVG({x: (C.x + gM.x) / 2, y: (C.y + gM.y) / 2});
+    // For G, offset outward along direction from center to G
+    const offDir = (p, c, dist) => {
+      const dx = p.x - c.x, dy = p.y - c.y;
+      const len = Math.sqrt(dx*dx + dy*dy);
+      return len < 0.001 ? {x: p.x, y: p.y} : {x: p.x + dist*dx/len, y: p.y + dist*dy/len};
+    };
+    const gLab = offDir(sG, rectCenter, 0.35);
+    lblG.setAttribute('x', gLab.x); lblG.setAttribute('y', gLab.y);
+    const hLab = offDir(sH, rectCenter, 0.35);
+    lblH.setAttribute('x', hLab.x); lblH.setAttribute('y', hLab.y);
+    const oLab = offDir(sO, rectCenter, 0.3);
+    lblO.setAttribute('x', oLab.x); lblO.setAttribute('y', oLab.y);
+
+    // OB length text — placed near the midpoint of OB
+    const obMid = {x: (sB.x + sO.x) / 2, y: (sB.y + sO.y) / 2};
+    const obOff = offDir(obMid, sO, 0.3);
+    // Place label perpendicular to OB
+    const obDx = sB.x - sO.x, obDy = sB.y - sO.y;
+    const obLen2 = Math.sqrt(obDx*obDx + obDy*obDy);
+    const perpX = -obDy / obLen2 * 0.35, perpY = obDx / obLen2 * 0.35;
+    lblOB.setAttribute('x', obMid.x + perpX);
+    lblOB.setAttribute('y', obMid.y + perpY);
+    lblOB.textContent = `OB = ${ob.toFixed(2)}`;
+
+    // OB value in controls
+    obVal.innerHTML = `OB = ${ob.toFixed(2)}` +
+      (Math.abs(ob - obMin) < 0.01
+        ? ' ⭐ <span style="color:#3fb950">最小值!</span>'
+        : '');
+
+    // Slider
+    slider.value = t;
+
+    // Mini-bar
+    const barX = 10.45, barW = 3.7;
+    const fillRatio = (ob - obMin) / barRange;
+    const fillW = Math.max(0.05, barW * (1 - fillRatio));
+    barFill.setAttribute('width', fillW);
+    barFill.setAttribute('fill', ob - obMin < 0.05 ? '#3fb950' : '#f0883e');
+
+    // Min marker position on bar
+    // OB=4 is at the right edge of the bar (minimum → full bar)
+    // Actually: ob=obMax → fillW=0 (left), ob=obMin → fillW=barW (right)
+    // Wait, let me reconsider. The bar shows OB value.
+    // ob=obMax (max OB) at left. ob=obMin (min OB) at right.
+    // As ob decreases (getting closer to min), fillW increases.
+    // fillRatio = (ob-obMin)/(obMax-obMin) → 0 when ob=obMin, → 1 when ob=obMax
+    // fillW = barW * (1 - fillRatio) → barW when ob=obMin, 0 when ob=obMax
+    // Min marker is at x = barX + fillW (right edge of fill) when ob=obMin
+    // Actually, let me place the min marker at the right edge (barX + barW)
+    barMin.setAttribute('x1', barX + barW);
+    barMin.setAttribute('x2', barX + barW);
+  }
+
+  function animate() {
+    if (playing) {
+      t = parseFloat(t) + speed;
+      if (t > tMax) { t = 0; }
+      update();
+    }
+    requestAnimationFrame(animate);
+  }
+
+  // ---- Event listeners ----
+  playBtn.addEventListener('click', () => {
+    playing = !playing;
+    playBtn.textContent = playing ? '暂停' : '播放';
+    playBtn.style.background = playing ? '#da3633' : '#238636';
+  });
+  resetBtn.addEventListener('click', () => { t = 0; update(); });
+  slider.addEventListener('input', () => {
+    t = parseFloat(slider.value);
+    playing = false;
+    playBtn.textContent = '播放';
+    playBtn.style.background = '#238636';
+    update();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.code === 'Space') { e.preventDefault(); playBtn.click(); }
+    if (e.code === 'ArrowRight') { t = Math.min(tMax, t + 0.2); update(); }
+    if (e.code === 'ArrowLeft') { t = Math.max(0, t - 0.2); update(); }
+  });
+
+  // ---- Init ----
+  update();
+  animate();
+})();
+</script>
+</body>
+</html>

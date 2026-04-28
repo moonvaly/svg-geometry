@@ -1,0 +1,24 @@
+{
+  "name": "svg_geometry",
+  "version": "1.0.0",
+  "description": "- make a SVG animation based on the geometry requiremnt.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/moonvaly/svg-geometry.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/moonvaly/svg-geometry/issues"
+  },
+  "homepage": "https://github.com/moonvaly/svg-geometry#readme",
+  "dependencies": {
+    "puppeteer": "^24.42.0"
+  }
+}

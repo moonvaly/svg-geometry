@@ -3,274 +3,125 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>几何动画 - 正方形ABCD旋转</title>
+<title>几何动画题库</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
-    display: flex; flex-direction: column;
-    justify-content: center; align-items: center;
     min-height: 100vh;
     background: #0d1117;
     color: #c9d1d9;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    overflow: hidden;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 40px 20px 60px;
   }
-  h1 { font-size: 20px; font-weight: 500; color: #e6edf3; margin-bottom: 10px; }
-  .problem {
-    font-size: 13px; color: #8b949e; margin-bottom: 14px;
-    max-width: 600px; text-align: center; line-height: 1.6;
+  header {
+    text-align: center; margin-bottom: 40px;
   }
-  svg { border-radius: 8px; }
-  .controls {
-    margin-top: 14px; display: flex; gap: 14px; align-items: center;
-    flex-wrap: wrap; justify-content: center;
+  header h1 {
+    font-size: 28px; font-weight: 600; color: #e6edf3;
+    margin-bottom: 8px;
   }
-  button {
-    background: #238636; color: white; border: none;
-    padding: 7px 18px; border-radius: 6px; cursor: pointer;
-    font-size: 14px; font-weight: 600; transition: background 0.2s;
+  header p {
+    font-size: 15px; color: #8b949e;
   }
-  button:hover { background: #2ea043; }
-  button.sec { background: #30363d; }
-  button.sec:hover { background: #484f58; }
-  input[type="range"] { width: 220px; accent-color: #238636; }
-  .angle-display {
-    font-size: 16px; font-variant-numeric: tabular-nums;
-    min-width: 100px; text-align: center; color: #f0883e; font-weight: 600;
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+    width: 100%;
+    max-width: 1100px;
   }
-  .legend {
-    margin-top: 10px; display: flex; gap: 14px; flex-wrap: wrap;
-    justify-content: center; font-size: 12px;
+  .card {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 12px;
+    padding: 24px;
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.25s, background 0.25s, transform 0.15s;
+    display: flex; flex-direction: column;
   }
-  .legend-item { display: flex; align-items: center; gap: 5px; }
-  .legend-bar { width: 14px; height: 3px; border-radius: 1px; }
+  .card:hover {
+    border-color: #58a6ff;
+    background: #1c2128;
+    transform: translateY(-2px);
+  }
+  .card .num {
+    font-size: 12px; font-weight: 600; color: #58a6ff;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    margin-bottom: 8px;
+  }
+  .card h2 {
+    font-size: 18px; font-weight: 500; color: #e6edf3;
+    margin-bottom: 10px;
+  }
+  .card p {
+    font-size: 13px; color: #8b949e; line-height: 1.6;
+    flex: 1;
+  }
+  .card .tags {
+    display: flex; gap: 8px; flex-wrap: wrap;
+    margin-top: 14px;
+  }
+  .card .tag {
+    font-size: 11px; padding: 2px 8px; border-radius: 4px;
+    background: #21262d; color: #8b949e;
+  }
+  .empty {
+    grid-column: 1 / -1;
+    text-align: center; padding: 60px 20px;
+    color: #484f58; font-size: 15px;
+  }
+  .empty strong { display: block; margin-bottom: 6px; color: #8b949e; }
 </style>
 </head>
 <body>
-<h1>正方形ABCD旋转动画</h1>
-<p class="problem">
-  正方形ABCD，BD是对角线(BD=6)。P、Q分别为线段BD、BC上的点，BP=1，∠BPQ=90°。
-  将△BPQ绕点B顺时针旋转n°至△BMN，连接ND，取ND中点E，连接CE。
-</p>
-<svg id="geo" width="640" height="640" viewBox="-2.5 -1.5 9 9"
-     shape-rendering="geometricPrecision"></svg>
-<div class="controls">
-  <button id="playBtn">暂停</button>
-  <button id="resetBtn" class="sec">重置</button>
-  <input type="range" id="slider" min="0" max="360" value="0" step="0.5">
-  <span class="angle-display" id="angleDisp">n = 0.0°</span>
-</div>
-<div class="legend">
-  <span class="legend-item"><span class="legend-bar" style="background:#58a6ff"></span>△BPQ</span>
-  <span class="legend-item"><span class="legend-bar" style="background:#f0883e"></span>△BMN</span>
-  <span class="legend-item"><span class="legend-bar" style="background:#f85149"></span>ND</span>
-  <span class="legend-item"><span class="legend-bar" style="background:#3fb950"></span>CE / E轨迹</span>
-</div>
-<script>
-(() => {
-  const $ = id => document.getElementById(id);
-  const svg = $('geo'), slider = $('slider'), disp = $('angleDisp');
-  const playBtn = $('playBtn'), resetBtn = $('resetBtn');
+  <header>
+    <h1>几何动画题库</h1>
+    <p>选择一道题目查看 SVG 动画演示</p>
+  </header>
+  <div class="grid" id="problemGrid"></div>
+  <script>
+    // Problem definitions — add new entries here when creating new problem files
+    const problems = [
+      {
+        file: 'problems/p1.html',
+        title: '正方形ABCD旋转',
+        description: '正方形ABCD中，△BPQ绕点B旋转至△BMN，点E为ND中点，探究E点轨迹。',
+        tags: ['旋转', '轨迹', '中点'],
+      },
+      {
+        file: 'problems/p2.html',
+        title: '矩形CDGH中线段OB最小值',
+        description: 'AB=8，△ACD是边长为3的等边三角形。过点D作DP⊥CD，矩形CDGH的对角线交点为O，求OB的最小值。',
+        tags: ['等边三角形', '矩形', '动点', '最小值'],
+      },
+      {
+        file: 'problems/p3.html',
+        title: '菱形ABCD中AG的最小值',
+        description: '菱形ABCD边长4，∠ABC=60°，E、F在AB、CD上且AE=CF，BG⊥EF于G，求AG的最小值。',
+        tags: ['菱形', '动点', '垂足', '最小值'],
+      },
+    ];
 
-  const S2 = Math.SQRT2, s = 3 * S2; // side ≈ 4.2426, BD = 6
+    const grid = document.getElementById('problemGrid');
 
-  // Square vertices (SVG coords, y-down)
-  const A = {x:0,y:0}, B = {x:0,y:s}, C = {x:s,y:s}, D = {x:s,y:0};
-
-  // P on BD (BP=1), Q on BC (∠BPQ=90°)
-  const P = {x:1/S2, y:s-1/S2};  // ≈ (0.707, 3.536)
-  const Q = {x:S2, y:s};          // ≈ (1.414, 4.243)
-
-  const rot = (p,c,d) => {
-    const r=d*Math.PI/180, dx=p.x-c.x, dy=p.y-c.y;
-    return {x:c.x+dx*Math.cos(r)-dy*Math.sin(r), y:c.y+dx*Math.sin(r)+dy*Math.cos(r)};
-  };
-  const mid = (a,b) => ({x:(a.x+b.x)/2, y:(a.y+b.y)/2});
-
-  const el = (tag,attrs) => {
-    const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
-    for (const [k,v] of Object.entries(attrs)) e.setAttribute(k,v);
-    return e;
-  };
-
-  // ---- Static scene ----
-
-  // Square
-  svg.appendChild(el('rect',{x:0,y:0,width:s,height:s,
-    fill:'#161b22',stroke:'#58a6ff','stroke-width':0.04}));
-
-  // Diagonal BD
-  svg.appendChild(el('line',{x1:B.x,y1:B.y,x2:D.x,y2:D.y,
-    stroke:'#484f58','stroke-width':0.025,'stroke-dasharray':'0.15 0.08'}));
-
-  // E locus circle (center=O, r=√2/2)
-  svg.appendChild(el('circle',{cx:s/2,cy:s/2,r:S2/2,
-    fill:'none',stroke:'#3fb950','stroke-width':0.02,
-    'stroke-dasharray':'0.06 0.05',opacity:0.35}));
-
-  // N path circle (center=B, r=√2)
-  svg.appendChild(el('circle',{cx:B.x,cy:B.y,r:S2,
-    fill:'none',stroke:'#f0883e','stroke-width':0.015,
-    'stroke-dasharray':'0.04 0.06',opacity:0.2}));
-
-  // Original triangle BPQ
-  svg.appendChild(el('polygon',{
-    points:`${B.x},${B.y} ${P.x},${P.y} ${Q.x},${Q.y}`,
-    fill:'#58a6ff','fill-opacity':0.08,stroke:'#58a6ff',
-    'stroke-width':0.02,'stroke-dasharray':'0.08 0.04'}));
-
-  // Right-angle marker at P
-  const d = 0.13;
-  const dirBP = {x:-1/S2, y:1/S2}; // P→B direction
-  const dirPQ = {x:1/S2, y:1/S2};  // P→Q direction
-  const c1 = {x:P.x+d*dirBP.x, y:P.y+d*dirBP.y};
-  const c2 = {x:c1.x+d*dirPQ.x, y:c1.y+d*dirPQ.y};
-  const c3 = {x:P.x+d*dirPQ.x, y:P.y+d*dirPQ.y};
-  svg.appendChild(el('path',{
-    d:`M${c1.x},${c1.y} L${c2.x},${c2.y} L${c3.x},${c3.y}`,
-    fill:'none',stroke:'#58a6ff','stroke-width':0.02,opacity:0.6}));
-
-  // ---- Dynamic elements ----
-  const g = el('g',{}); svg.appendChild(g);
-
-  // E trail arc
-  const eTrail = el('path',{fill:'none',stroke:'#3fb950','stroke-width':0.03,opacity:0.5});
-  g.appendChild(eTrail);
-
-  // Triangle BMN
-  const triBMN = el('polygon',{
-    fill:'#f0883e','fill-opacity':0.18,stroke:'#f0883e','stroke-width':0.03});
-  g.appendChild(triBMN);
-
-  // Line ND
-  const lineND = el('line',{stroke:'#f85149','stroke-width':0.025,'stroke-dasharray':'0.12 0.06'});
-  g.appendChild(lineND);
-
-  // Line CE
-  const lineCE = el('line',{stroke:'#3fb950','stroke-width':0.035});
-  g.appendChild(lineCE);
-
-  // Angle arc at B
-  const angleArc = el('path',{fill:'none',stroke:'#f0883e','stroke-width':0.02,opacity:0.5});
-  g.appendChild(angleArc);
-
-  // Points
-  const mkPt = (color,r=0.06) => {
-    const c = el('circle',{r,fill:color,stroke:'#0d1117','stroke-width':0.018});
-    g.appendChild(c); return c;
-  };
-  const ptP = mkPt('#58a6ff',0.05);
-  const ptQ = mkPt('#58a6ff',0.05);
-  const ptM = mkPt('#f0883e',0.06);
-  const ptN = mkPt('#f0883e',0.06);
-  const ptE = mkPt('#3fb950',0.07);
-
-  // Position static points
-  ptP.setAttribute('cx',P.x); ptP.setAttribute('cy',P.y);
-  ptQ.setAttribute('cx',Q.x); ptQ.setAttribute('cy',Q.y);
-
-  // Labels
-  const mkLbl = (text,color='#c9d1d9',sz=0.2) => {
-    const t = el('text',{
-      fill:color,'font-size':sz,'font-weight':600,
-      'font-family':'sans-serif','text-anchor':'middle',
-      'dominant-baseline':'central',
-      stroke:'#0d1117','stroke-width':0.04,'paint-order':'stroke'});
-    t.textContent = text; g.appendChild(t); return t;
-  };
-
-  // Static labels
-  const O = 0.28; // offset
-  [[mkLbl('A'),A.x-O,A.y-O],[mkLbl('B'),B.x-O,B.y+O],
-   [mkLbl('C'),C.x+O,C.y+O],[mkLbl('D'),D.x+O,D.y-O],
-   [mkLbl('P','#58a6ff',0.17),P.x-O*1.4,P.y-O*0.4],
-   [mkLbl('Q','#58a6ff',0.17),Q.x,Q.y+O]].forEach(
-    ([l,x,y])=>{l.setAttribute('x',x);l.setAttribute('y',y);});
-
-  // Dynamic labels
-  const lblM = mkLbl('M','#f0883e',0.17);
-  const lblN = mkLbl('N','#f0883e',0.17);
-  const lblE = mkLbl('E','#3fb950',0.19);
-  const lblAngle = mkLbl('n°','#f0883e',0.15);
-
-  // ---- Animation loop ----
-  let n = 0, playing = true, speed = 0.4;
-
-  function update() {
-    const M = rot(P,B,n), N = rot(Q,B,n), E = mid(N,D);
-
-    triBMN.setAttribute('points',`${B.x},${B.y} ${M.x},${M.y} ${N.x},${N.y}`);
-    lineND.setAttribute('x1',N.x); lineND.setAttribute('y1',N.y);
-    lineND.setAttribute('x2',D.x); lineND.setAttribute('y2',D.y);
-    lineCE.setAttribute('x1',C.x); lineCE.setAttribute('y1',C.y);
-    lineCE.setAttribute('x2',E.x); lineCE.setAttribute('y2',E.y);
-
-    ptM.setAttribute('cx',M.x); ptM.setAttribute('cy',M.y);
-    ptN.setAttribute('cx',N.x); ptN.setAttribute('cy',N.y);
-    ptE.setAttribute('cx',E.x); ptE.setAttribute('cy',E.y);
-
-    // Dynamic labels offset away from B / center
-    const lblOff = (p,c,o) => {
-      const a = Math.atan2(p.y-c.y,p.x-c.x);
-      return {x:p.x+o*Math.cos(a), y:p.y+o*Math.sin(a)};
-    };
-    const mL = lblOff(M,B,O); lblM.setAttribute('x',mL.x); lblM.setAttribute('y',mL.y);
-    const nL = lblOff(N,B,O); lblN.setAttribute('x',nL.x); lblN.setAttribute('y',nL.y);
-    const eL = lblOff(E,{x:s/2,y:s/2},O); lblE.setAttribute('x',eL.x); lblE.setAttribute('y',eL.y);
-
-    // Angle arc
-    if (n > 1) {
-      const r = 0.7, rad = n*Math.PI/180;
-      const sx=B.x+r, sy=B.y;
-      const ex=B.x+r*Math.cos(rad), ey=B.y+r*Math.sin(rad);
-      const la = n>180?1:0;
-      angleArc.setAttribute('d',`M${sx} ${sy} A${r} ${r} 0 ${la} 1 ${ex} ${ey}`);
-      // "n°" label at arc midpoint
-      const ma = rad/2, lr = 1.05;
-      lblAngle.setAttribute('x', B.x+lr*Math.cos(ma));
-      lblAngle.setAttribute('y', B.y+lr*Math.sin(ma));
-      lblAngle.textContent = n.toFixed(0)+'°';
+    if (problems.length === 0) {
+      grid.innerHTML = '<div class="empty"><strong>暂无题目</strong>请在 index.html 的 problems 数组中添加题目定义</div>';
     } else {
-      angleArc.setAttribute('d','');
-      lblAngle.textContent = '';
+      for (const [i, p] of problems.entries()) {
+        const card = document.createElement('a');
+        card.className = 'card';
+        card.href = p.file;
+        card.innerHTML = `
+          <div class="num">题目 ${i + 1}</div>
+          <h2>${p.title}</h2>
+          <p>${p.description}</p>
+          <div class="tags">${p.tags.map(t => `<span class="tag">${t}</span>`).join('')}</div>
+        `;
+        grid.appendChild(card);
+      }
     }
-
-    // E trail arc
-    if (n > 1) {
-      const cx=s/2,cy=s/2,r=S2/2, rad=n*Math.PI/180;
-      const sx=cx+r, sy=cy;
-      const ex=cx+r*Math.cos(rad), ey=cy+r*Math.sin(rad);
-      const la = n>180?1:0;
-      eTrail.setAttribute('d',`M${sx} ${sy} A${r} ${r} 0 ${la} 1 ${ex} ${ey}`);
-    } else {
-      eTrail.setAttribute('d','');
-    }
-
-    disp.textContent = `n = ${n.toFixed(1)}°`;
-    slider.value = n;
-  }
-
-  function animate() {
-    if (playing) { n = (n + speed) % 360; update(); }
-    requestAnimationFrame(animate);
-  }
-
-  playBtn.addEventListener('click', () => {
-    playing = !playing;
-    playBtn.textContent = playing ? '暂停' : '播放';
-    playBtn.style.background = playing ? '#238636' : '#da3633';
-  });
-  resetBtn.addEventListener('click', () => { n = 0; update(); });
-  slider.addEventListener('input', () => { n = parseFloat(slider.value); update(); });
-  document.addEventListener('keydown', e => {
-    if (e.code==='Space'){e.preventDefault();playBtn.click();}
-    if (e.code==='ArrowRight'){n=Math.min(360,n+1);update();}
-    if (e.code==='ArrowLeft'){n=Math.max(0,n-1);update();}
-  });
-
-  update();
-  animate();
-})();
-</script>
+  </script>
 </body>
 </html>
